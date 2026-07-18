@@ -8,18 +8,10 @@ import {
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../../config/index.js";
 import { resolveGuild } from "../../discord/client.js";
-import { channelTypeName } from "../../discord/format.js";
+import { createChannel, editChannel, summarizeChannel } from "../../discord/structureOps.js";
 import { ToolError } from "../../lib/errors.js";
 import { run } from "../../server/tool.js";
 import { dryRunField, writeResult } from "./shared.js";
-
-const CHANNEL_TYPES = {
-  text: ChannelType.GuildText,
-  voice: ChannelType.GuildVoice,
-  stage: ChannelType.GuildStageVoice,
-  forum: ChannelType.GuildForum,
-  announcement: ChannelType.GuildAnnouncement,
-} as const;
 
 async function fetchChannel(
   guildId: string | undefined,
@@ -38,16 +30,6 @@ async function fetchChannel(
     );
   }
   return channel;
-}
-
-function summarizeChannel(channel: GuildChannel): Record<string, unknown> {
-  return {
-    id: channel.id,
-    name: channel.name,
-    type: channelTypeName(channel.type),
-    parentId: channel.parentId,
-    position: channel.position,
-  };
 }
 
 export function registerChannelTools(server: McpServer, config: AppConfig): void {
@@ -79,7 +61,7 @@ export function registerChannelTools(server: McpServer, config: AppConfig): void
           }
         }
 
-        const planned = {
+        const input = {
           name: args.name,
           type: args.type,
           parentId: args.parentId,
@@ -91,19 +73,12 @@ export function registerChannelTools(server: McpServer, config: AppConfig): void
           return writeResult({
             action: "create_channel",
             target: { guildId: guild.id },
-            planned,
+            planned: input,
             dryRun: true,
           });
         }
 
-        const channel = await guild.channels.create({
-          name: args.name,
-          type: CHANNEL_TYPES[args.type],
-          parent: args.parentId,
-          topic: args.topic,
-          nsfw: args.nsfw,
-          position: args.position,
-        });
+        const channel = await createChannel(guild, input);
         return writeResult({
           action: "create_channel",
           target: { channelId: channel.id },
@@ -146,7 +121,7 @@ export function registerChannelTools(server: McpServer, config: AppConfig): void
             dryRun: true,
           });
         }
-        const updated = await (channel as GuildChannel).edit(options);
+        const updated = await editChannel(channel as GuildChannel, options);
         return writeResult({
           action: "edit_channel",
           target: { channelId: channel.id },
@@ -196,7 +171,7 @@ export function registerChannelTools(server: McpServer, config: AppConfig): void
             dryRun: true,
           });
         }
-        const updated = await (channel as GuildChannel).edit(options);
+        const updated = await editChannel(channel as GuildChannel, options);
         return writeResult({
           action: "move_channel",
           target: { channelId: channel.id },

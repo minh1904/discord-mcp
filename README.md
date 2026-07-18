@@ -1,6 +1,6 @@
 # Discord MCP
 
-MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1 — nền tảng + tool đọc** và **P2 — tool ghi cấu trúc** (role/channel/permission). Phase sau bổ sung lớp blueprint/tư vấn (P3+). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
+MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1** (nền tảng + tool đọc), **P2** (tool ghi cấu trúc), và **P3** (blueprint + tư vấn — nhận diện loại server, đề xuất & dựng khung). Phase sau: Community/Onboarding + audit (P4). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
 
 - **Stack:** TypeScript + [discord.js](https://discord.js.org) + [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol) (transport stdio).
 - **Runtime & package manager:** [Bun](https://bun.sh) ≥ 1.1 (chạy TypeScript trực tiếp, không cần build; tự nạp `.env`).
@@ -24,6 +24,19 @@ MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai m
 | Permission       | `set_channel_permission`, `remove_channel_permission`                                                             |
 
 An toàn ghi: mọi tool ghi nhận `dryRun: true` để trả về thay đổi dự kiến mà không thực thi; thao tác role bị chặn nếu role đích không thấp hơn role cao nhất của bot (lỗi `role_hierarchy`).
+
+## Tool blueprint & tư vấn (P3 — "bộ não")
+
+| Tool                      | Chức năng                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `list_blueprints`         | Liệt kê blueprint có sẵn (hiện có: `game`, `education`)                                 |
+| `get_blueprint`           | Chi tiết một blueprint theo id                                                          |
+| `get_discovery_questions` | Bộ câu hỏi khám phá nhu cầu (trước khi dựng)                                            |
+| `recommend_blueprint`     | Đề xuất blueprint từ mục đích (+ quy mô/nhóm) kèm lý do; mơ hồ thì trả câu hỏi          |
+| `propose_changes`         | So blueprint với hiện trạng guild → kế hoạch (không ghi)                                |
+| `apply_blueprint`         | Dựng phần còn thiếu (categories→channels→roles→overwrites), **idempotent**, có `dryRun` |
+
+4 tool đầu chạy **không cần kết nối Discord** (thao tác trên dữ liệu blueprint). `apply_blueprint` gọi lại lớp write P2 qua service dùng chung (`src/discord/structureOps.ts`).
 
 ## 1. Tạo Discord application & bot
 
@@ -122,9 +135,11 @@ Sau khi thêm, khởi động lại Claude Code; các tool `get_server_overview`
 src/
   index.ts              # entrypoint: nạp config, khởi động MCP + kết nối Discord
   config/               # schema env (zod) + loader
-  discord/              # discord.js client (singleton) + helpers format
+  discord/              # client (singleton) + format + structureOps (service ghi dùng chung)
   server/               # bootstrap MCP server + helper thực thi tool
+  blueprints/           # schema + blueprint game/education + recommend + discovery (P3)
   tools/inspection/     # 5 tool read-only (P1)
   tools/structure/      # 14 tool ghi role/channel/permission (P2)
+  tools/blueprint/      # 6 tool blueprint/tư vấn (P3)
   lib/                  # logger (stderr), lỗi có cấu trúc
 ```

@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../config/index.js";
 import { registerInspectionTools } from "../tools/inspection/index.js";
 import { registerStructureTools } from "../tools/structure/index.js";
+import { registerBlueprintTools } from "../tools/blueprint/index.js";
 
 /** Create the MCP server and register all available tools. */
 export function createServer(config: AppConfig): McpServer {
@@ -12,6 +13,7 @@ export function createServer(config: AppConfig): McpServer {
 
   registerInspectionTools(server, config);
   registerStructureTools(server, config);
+  registerBlueprintTools(server, config);
 
   return server;
 }

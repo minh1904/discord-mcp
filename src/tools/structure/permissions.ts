@@ -1,13 +1,13 @@
 import { z } from "zod";
-import type {
-  GuildChannel,
-  PermissionOverwriteOptions,
-  RoleResolvable,
-  UserResolvable,
-} from "discord.js";
+import type { GuildChannel } from "discord.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../../config/index.js";
 import { resolveGuild } from "../../discord/client.js";
+import {
+  applyChannelPermission,
+  buildOverwriteOptions,
+  resolveOverwriteTarget,
+} from "../../discord/structureOps.js";
 import { ToolError } from "../../lib/errors.js";
 import { ok, run } from "../../server/tool.js";
 import { dryRunField, writeResult } from "./shared.js";
@@ -51,21 +51,8 @@ export function registerPermissionTools(server: McpServer, config: AppConfig): v
     (args) =>
       run("set_channel_permission", async () => {
         const channel = await fetchManageableChannel(args.guildId, args.channelId, config);
-
-        const target: RoleResolvable | UserResolvable =
-          args.targetType === "role"
-            ? await channel.guild.roles.fetch(args.targetId).then((role) => {
-                if (!role)
-                  throw new ToolError("role_not_found", `Role ${args.targetId} not found.`);
-                return role;
-              })
-            : await channel.guild.members.fetch(args.targetId);
-
-        const options: PermissionOverwriteOptions = {};
-        for (const permission of args.allow ?? [])
-          options[permission as keyof PermissionOverwriteOptions] = true;
-        for (const permission of args.deny ?? [])
-          options[permission as keyof PermissionOverwriteOptions] = false;
+        const target = await resolveOverwriteTarget(channel.guild, args.targetId, args.targetType);
+        const options = buildOverwriteOptions(args.allow ?? [], args.deny ?? []);
 
         const summary = {
           channelId: channel.id,
@@ -82,7 +69,7 @@ export function registerPermissionTools(server: McpServer, config: AppConfig): v
             dryRun: true,
           });
         }
-        await channel.permissionOverwrites.edit(target, options);
+        await applyChannelPermission(channel, target, options);
         return writeResult({
           action: "set_channel_permission",
           target: summary,

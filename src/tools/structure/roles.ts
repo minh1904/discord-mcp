@@ -1,11 +1,19 @@
 import { z } from "zod";
-import type { ColorResolvable, PermissionResolvable, Role } from "discord.js";
+import type { Role } from "discord.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../../config/index.js";
 import { resolveGuild } from "../../discord/client.js";
+import {
+  assertManageableRole,
+  botHighestPosition,
+  createRole,
+  deleteRole,
+  editRole,
+  summarizeRole,
+} from "../../discord/structureOps.js";
 import { ToolError } from "../../lib/errors.js";
 import { run } from "../../server/tool.js";
-import { assertManageableRole, dryRunField, writeResult } from "./shared.js";
+import { dryRunField, writeResult } from "./shared.js";
 
 async function fetchRole(
   guildId: string | undefined,
@@ -18,18 +26,6 @@ async function fetchRole(
     throw new ToolError("role_not_found", `Role ${roleId} was not found in the guild.`);
   }
   return role;
-}
-
-function summarizeRole(role: Role): Record<string, unknown> {
-  return {
-    id: role.id,
-    name: role.name,
-    color: role.hexColor,
-    position: role.position,
-    hoist: role.hoist,
-    mentionable: role.mentionable,
-    permissions: role.permissions.toArray(),
-  };
 }
 
 export function registerRoleTools(server: McpServer, config: AppConfig): void {
@@ -54,7 +50,7 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
     (args) =>
       run("create_role", async () => {
         const guild = await resolveGuild(args.guildId ?? config.defaultGuildId);
-        const planned = {
+        const input = {
           name: args.name,
           color: args.color,
           hoist: args.hoist,
@@ -65,17 +61,11 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
           return writeResult({
             action: "create_role",
             target: { guildId: guild.id },
-            planned,
+            planned: input,
             dryRun: true,
           });
         }
-        const role = await guild.roles.create({
-          name: args.name,
-          color: args.color as ColorResolvable | undefined,
-          hoist: args.hoist,
-          mentionable: args.mentionable,
-          permissions: args.permissions as PermissionResolvable | undefined,
-        });
+        const role = await createRole(guild, input);
         return writeResult({
           action: "create_role",
           target: { roleId: role.id },
@@ -109,13 +99,13 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
         const role = await fetchRole(args.guildId, args.roleId, config);
         assertManageableRole(role.guild, role);
 
-        const changes: Record<string, unknown> = {};
-        if (args.name !== undefined) changes.name = args.name;
-        if (args.color !== undefined) changes.color = args.color;
-        if (args.hoist !== undefined) changes.hoist = args.hoist;
-        if (args.mentionable !== undefined) changes.mentionable = args.mentionable;
-        if (args.permissions !== undefined) changes.permissions = args.permissions;
-
+        const changes = {
+          name: args.name,
+          color: args.color,
+          hoist: args.hoist,
+          mentionable: args.mentionable,
+          permissions: args.permissions,
+        };
         if (args.dryRun) {
           return writeResult({
             action: "edit_role",
@@ -124,14 +114,7 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
             dryRun: true,
           });
         }
-
-        const updated = await role.edit({
-          name: args.name,
-          color: args.color as ColorResolvable | undefined,
-          hoist: args.hoist,
-          mentionable: args.mentionable,
-          permissions: args.permissions as PermissionResolvable | undefined,
-        });
+        const updated = await editRole(role, changes);
         return writeResult({
           action: "edit_role",
           target: { roleId: role.id },
@@ -166,7 +149,7 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
             dryRun: true,
           });
         }
-        await role.delete();
+        await deleteRole(role);
         return writeResult({
           action: "delete_role",
           target,
@@ -198,8 +181,7 @@ export function registerRoleTools(server: McpServer, config: AppConfig): void {
         const role = await fetchRole(args.guildId, args.roleId, config);
         assertManageableRole(role.guild, role);
 
-        const me = role.guild.members.me;
-        const botHighest = me?.roles.highest.position ?? 0;
+        const botHighest = botHighestPosition(role.guild);
         if (args.position >= botHighest) {
           throw new ToolError(
             "role_hierarchy",

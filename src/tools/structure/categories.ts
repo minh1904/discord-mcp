@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { ChannelType } from "discord.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../../config/index.js";
 import { resolveGuild } from "../../discord/client.js";
+import { createCategory } from "../../discord/structureOps.js";
 import { run } from "../../server/tool.js";
 import { dryRunField, writeResult } from "./shared.js";
 
@@ -31,11 +31,7 @@ export function registerCategoryTools(server: McpServer, config: AppConfig): voi
             dryRun: true,
           });
         }
-        const category = await guild.channels.create({
-          name: args.name,
-          type: ChannelType.GuildCategory,
-          position: args.position,
-        });
+        const category = await createCategory(guild, args.name, args.position);
         return writeResult({
           action: "create_category",
           target: { categoryId: category.id },
