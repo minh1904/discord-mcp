@@ -1,0 +1,47 @@
+{
+  "name": "discord-mcp",
+  "version": "0.1.0",
+  "description": "Discord server customization MCP server with expert consultant knowledge. P1: foundation + read-only inspection tools.",
+  "type": "module",
+  "bin": {
+    "discord-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "discord",
+    "mcp",
+    "model-context-protocol",
+    "discord.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "discord.js": "^14.27.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.64.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+docs/
+openspec/
+.claude/
+package-lock.json
