@@ -1,6 +1,6 @@
 # Discord MCP
 
-MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1** (nền tảng + tool đọc), **P2** (tool ghi cấu trúc), **P3** (blueprint + tư vấn), và **P4** (Community/Onboarding + audit an toàn + tài liệu bàn giao). Phase sau: hoàn thiện & phân phối (P5). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
+MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Trọn vòng: **P1** (nền tảng + tool đọc), **P2** (tool ghi cấu trúc), **P3** (blueprint + tư vấn), **P4** (Community/Onboarding + audit + bàn giao), **P5** (HTTP transport, đủ 6 blueprint, test). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
 
 - **Stack:** TypeScript + [discord.js](https://discord.js.org) + [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol) (transport stdio).
 - **Runtime & package manager:** [Bun](https://bun.sh) ≥ 1.1 (chạy TypeScript trực tiếp, không cần build; tự nạp `.env`).
@@ -27,14 +27,14 @@ An toàn ghi: mọi tool ghi nhận `dryRun: true` để trả về thay đổi 
 
 ## Tool blueprint & tư vấn (P3 — "bộ não")
 
-| Tool                      | Chức năng                                                                               |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| `list_blueprints`         | Liệt kê blueprint có sẵn (hiện có: `game`, `education`)                                 |
-| `get_blueprint`           | Chi tiết một blueprint theo id                                                          |
-| `get_discovery_questions` | Bộ câu hỏi khám phá nhu cầu (trước khi dựng)                                            |
-| `recommend_blueprint`     | Đề xuất blueprint từ mục đích (+ quy mô/nhóm) kèm lý do; mơ hồ thì trả câu hỏi          |
-| `propose_changes`         | So blueprint với hiện trạng guild → kế hoạch (không ghi)                                |
-| `apply_blueprint`         | Dựng phần còn thiếu (categories→channels→roles→overwrites), **idempotent**, có `dryRun` |
+| Tool                      | Chức năng                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| `list_blueprints`         | Liệt kê blueprint (6 loại: `game`, `education`, `community`, `crypto`, `creator`, `business`) |
+| `get_blueprint`           | Chi tiết một blueprint theo id                                                                |
+| `get_discovery_questions` | Bộ câu hỏi khám phá nhu cầu (trước khi dựng)                                                  |
+| `recommend_blueprint`     | Đề xuất blueprint từ mục đích (+ quy mô/nhóm) kèm lý do; mơ hồ thì trả câu hỏi                |
+| `propose_changes`         | So blueprint với hiện trạng guild → kế hoạch (không ghi)                                      |
+| `apply_blueprint`         | Dựng phần còn thiếu (categories→channels→roles→overwrites), **idempotent**, có `dryRun`       |
 
 4 tool đầu chạy **không cần kết nối Discord** (thao tác trên dữ liệu blueprint). `apply_blueprint` gọi lại lớp write P2 qua service dùng chung (`src/discord/structureOps.ts`).
 
@@ -119,6 +119,22 @@ bun start           # chạy từ src (bun run src/index.ts)
 
 Bun **tự nạp `.env`** ở thư mục hiện tại. Log đi ra **stderr** (stdout dành riêng cho giao thức MCP).
 
+### Transport HTTP (deploy dạng service)
+
+Mặc định là **stdio**. Để chạy dưới dạng service HTTP:
+
+```bash
+MCP_TRANSPORT=http MCP_HTTP_PORT=3000 bun start
+```
+
+Server phục vụ MCP streamable tại `POST http://<host>:3000/mcp` (stateless). Nếu chọn `http` mà thiếu/sai `MCP_HTTP_PORT`, server dừng với lỗi rõ. HTTP hiện **không kèm auth** — chỉ dùng nội bộ hoặc sau reverse proxy.
+
+### Test
+
+```bash
+bun test        # bộ test logic thuần (không cần Discord)
+```
+
 ## 6. Cấu hình trong Claude Code
 
 Thêm server vào cấu hình MCP của Claude Code (chạy thẳng source bằng Bun, không cần build):
@@ -146,11 +162,11 @@ Sau khi thêm, khởi động lại Claude Code; các tool `get_server_overview`
 
 ```
 src/
-  index.ts              # entrypoint: nạp config, khởi động MCP + kết nối Discord
+  index.ts              # entrypoint: nạp config, chọn transport (stdio/http), kết nối Discord
   config/               # schema env (zod) + loader
   discord/              # client (singleton) + format + structureOps (service ghi dùng chung)
-  server/               # bootstrap MCP server + helper thực thi tool
-  blueprints/           # schema + blueprint game/education + recommend + discovery (P3)
+  server/               # bootstrap MCP server + stdio/http transport + helper thực thi tool
+  blueprints/           # schema + 6 blueprint + recommend + discovery (P3/P5)
   tools/inspection/     # 5 tool read-only (P1)
   tools/structure/      # 14 tool ghi role/channel/permission (P2)
   tools/blueprint/      # 6 tool blueprint/tư vấn (P3)
@@ -158,4 +174,5 @@ src/
   tools/audit/          # audit_permissions + view_as (P4)
   tools/handoff/        # generate_handoff (P4)
   lib/                  # logger (stderr), lỗi có cấu trúc
+tests/                  # bun test — logic thuần (blueprint, recommend, config, format)
 ```

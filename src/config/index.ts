@@ -19,11 +19,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const data = parsed.data;
   const guildId =
     data.DISCORD_GUILD_ID && data.DISCORD_GUILD_ID.length > 0 ? data.DISCORD_GUILD_ID : undefined;
+  const transport = data.MCP_TRANSPORT ?? "stdio";
+
+  let httpPort: number | undefined;
+  if (transport === "http") {
+    const port = Number(data.MCP_HTTP_PORT);
+    if (!data.MCP_HTTP_PORT || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(
+        `MCP_TRANSPORT=http requires a valid MCP_HTTP_PORT (1-65535); got "${data.MCP_HTTP_PORT ?? ""}".`,
+      );
+    }
+    httpPort = port;
+  }
 
   return {
     discordToken: data.DISCORD_TOKEN,
     defaultGuildId: guildId,
     logLevel: data.LOG_LEVEL,
+    transport,
+    httpPort,
   };
 }
 
