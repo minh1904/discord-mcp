@@ -1,6 +1,6 @@
 # Discord MCP
 
-MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Đây là **P1 — nền tảng**: kết nối bot và cung cấp các tool **chỉ đọc** để khảo sát cấu trúc một guild. Các phase sau bổ sung tool ghi (P2) và lớp blueprint/tư vấn (P3+). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
+MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1 — nền tảng + tool đọc** và **P2 — tool ghi cấu trúc** (role/channel/permission). Phase sau bổ sung lớp blueprint/tư vấn (P3+). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
 
 - **Stack:** TypeScript + [discord.js](https://discord.js.org) + [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol) (transport stdio).
 - **Runtime & package manager:** [Bun](https://bun.sh) ≥ 1.1 (chạy TypeScript trực tiếp, không cần build; tự nạp `.env`).
@@ -14,6 +14,16 @@ MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai m
 | `list_channels`           | Category + kênh con, loại kênh, quan hệ cha–con                             |
 | `get_channel_permissions` | Permission overwrite của một kênh (role/member, allow/deny)                 |
 | `ping`                    | Trạng thái kết nối bot                                                      |
+
+## Tool ghi (P2, write — mọi tool có `dryRun` để xem trước)
+
+| Nhóm             | Tool                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Role             | `create_role`, `edit_role`, `delete_role`, `reorder_role`, `assign_role`, `remove_role`                           |
+| Category/Channel | `create_category`, `create_channel`, `edit_channel`, `move_channel`, `delete_channel`, `sync_channel_to_category` |
+| Permission       | `set_channel_permission`, `remove_channel_permission`                                                             |
+
+An toàn ghi: mọi tool ghi nhận `dryRun: true` để trả về thay đổi dự kiến mà không thực thi; thao tác role bị chặn nếu role đích không thấp hơn role cao nhất của bot (lỗi `role_hierarchy`).
 
 ## 1. Tạo Discord application & bot
 
@@ -114,8 +124,7 @@ src/
   config/               # schema env (zod) + loader
   discord/              # discord.js client (singleton) + helpers format
   server/               # bootstrap MCP server + helper thực thi tool
-  tools/inspection/     # 5 tool read-only của P1
+  tools/inspection/     # 5 tool read-only (P1)
+  tools/structure/      # 14 tool ghi role/channel/permission (P2)
   lib/                  # logger (stderr), lỗi có cấu trúc
 ```
-
-`src/tools/structure/` được để dành cho write tools của P2.
