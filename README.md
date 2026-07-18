@@ -1,6 +1,6 @@
 # Discord MCP
 
-MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1** (nền tảng + tool đọc), **P2** (tool ghi cấu trúc), và **P3** (blueprint + tư vấn — nhận diện loại server, đề xuất & dựng khung). Phase sau: Community/Onboarding + audit (P4). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
+MCP server để tùy chỉnh & khảo sát server Discord, hướng tới vai một **chuyên gia setup Discord**. Hiện đã có **P1** (nền tảng + tool đọc), **P2** (tool ghi cấu trúc), **P3** (blueprint + tư vấn), và **P4** (Community/Onboarding + audit an toàn + tài liệu bàn giao). Phase sau: hoàn thiện & phân phối (P5). Xem lộ trình trong [`openspec/changes/project-roadmap`](openspec/changes/project-roadmap) và tài liệu nền trong [`docs/`](docs/00-tong-quan.md).
 
 - **Stack:** TypeScript + [discord.js](https://discord.js.org) + [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol) (transport stdio).
 - **Runtime & package manager:** [Bun](https://bun.sh) ≥ 1.1 (chạy TypeScript trực tiếp, không cần build; tự nạp `.env`).
@@ -37,6 +37,19 @@ An toàn ghi: mọi tool ghi nhận `dryRun: true` để trả về thay đổi 
 | `apply_blueprint`         | Dựng phần còn thiếu (categories→channels→roles→overwrites), **idempotent**, có `dryRun` |
 
 4 tool đầu chạy **không cần kết nối Discord** (thao tác trên dữ liệu blueprint). `apply_blueprint` gọi lại lớp write P2 qua service dùng chung (`src/discord/structureOps.ts`).
+
+## Tool Community / Audit / Bàn giao (P4)
+
+| Tool                   | Chức năng                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `enable_community`     | Bật Community (cần rules + public-updates channel) — bước 1 trước Onboarding                       |
+| `get_onboarding`       | Đọc cấu hình Onboarding hiện tại (read-only)                                                       |
+| `configure_onboarding` | Cấu hình Onboarding (default channels + prompts→role/kênh); kiểm ràng buộc ≥7/≥5 & Community trước |
+| `audit_permissions`    | Quét rủi ro: Administrator, kênh staff bị lộ, announcement mở, role bot thấp (có severity)         |
+| `view_as`              | Kênh một role/member thấy được / không thấy được                                                   |
+| `generate_handoff`     | Xuất tài liệu bàn giao Markdown (cây role + sơ đồ kênh + bot/bảo mật từ blueprint)                 |
+
+`configure_onboarding` kiểm ràng buộc **trước khi gọi API** (Community đã bật; ≥7 default channel, ≥5 cho @everyone gửi) và trả hướng dẫn thủ công nếu vi phạm. Các tool cấu hình có `dryRun`.
 
 ## 1. Tạo Discord application & bot
 
@@ -141,5 +154,8 @@ src/
   tools/inspection/     # 5 tool read-only (P1)
   tools/structure/      # 14 tool ghi role/channel/permission (P2)
   tools/blueprint/      # 6 tool blueprint/tư vấn (P3)
+  tools/community/      # enable_community + get/configure_onboarding (P4)
+  tools/audit/          # audit_permissions + view_as (P4)
+  tools/handoff/        # generate_handoff (P4)
   lib/                  # logger (stderr), lỗi có cấu trúc
 ```
